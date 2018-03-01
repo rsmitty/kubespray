@@ -3,6 +3,12 @@ dependencies:
   - role: kubernetes-apps/persistent_volumes/openstack
     when:
       - cloud_provider is defined
-      - cloud_provider in [ 'openstack' ]
+      - cloud_provider == "openstack"
     tags:
       - persistent_volumes_openstack
+  - role: kubernetes-apps/persistent_volumes/vsphere
+    when:
+      - cloud_provider is defined
+      - cloud_provider == "vsphere"
+    tags:
+      - persistent_volumes_vsphere

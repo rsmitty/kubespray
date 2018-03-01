@@ -1,0 +1,35 @@
+---
+- name: Kubernetes Persistent Volumes | Set vsphere manifest list
+  set_fact:
+    manifest_list: 
+      - {file: vsphere-storage-class.yml, type: StorageClass, name: vsphere-storage-class }
+
+- name: Kubernetes Persistent Volumes | Add to vsphere manifest list if kube version > 1.9
+  set_fact:
+    manifest_list: "{{manifest_list}} + ['{{item}}']"
+  with_items:
+    - {file: vsphere-cr.yml, type: ClusterRole, name: vsphere-cr }
+    - {file: vsphere-crb.yml, type: ClusterRoleBinding, name: vsphere-crb }
+  when: 
+    - kube_version | version_compare('v1.9.2', '>=')
+
+
+- name: Kubernetes Persistent Volumes | Lay down vSphere Storage Class template and RBAC rules
+  template:
+    src: "{{item.file}}"
+    dest: "{{kube_config_dir}}/{{item.file}}"
+  with_items: "{{ manifest_list }}"
+  register: manifests
+  when:
+    - inventory_hostname == groups['kube-master'][0]
+
+- name: Kubernetes Persistent Volumes | Create Storage Class and RBAC rules
+  kube:
+    name: "{{item.item.name}}"
+    kubectl: "{{bin_dir}}/kubectl"
+    resource: "{{item.item.type}}"
+    filename: "{{kube_config_dir}}/{{item.item.file}}"
+    state: "latest"
+  with_items: "{{ manifests.results }}"
+  when:
+    - inventory_hostname == groups['kube-master'][0]
